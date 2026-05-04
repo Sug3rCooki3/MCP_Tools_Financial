@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { ChatRequest } from "./validation";
-import { getConversation, createConversation, getMessages, insertMessage } from "../db/conversations";
+import { getConversation, createConversation, getMessages, insertMessage, updateConversationTitle } from "../db/conversations";
 import { trimToLimits, normalizeAlternation } from "./context-window";
 import { buildSystemPrompt } from "./system-prompt";
 import { orchestrate } from "./orchestrator";
@@ -20,8 +20,12 @@ export async function runStreamPipeline(body: ChatRequest): Promise<Response> {
     // 4. Persist user message
     const userMessage = body.messages[body.messages.length - 1];
     const existingMessages = getMessages(conversationId);
+    if (!existing && existingMessages.length === 0) {
+      const title = userMessage.content.slice(0, 60);
+      if (title) updateConversationTitle(conversationId, title);
+    }
     insertMessage({
-      id: randomUUID(),
+      id: `msg_${randomUUID()}`,
       conversation_id: conversationId,
       role: "user",
       content: userMessage.content,
@@ -60,7 +64,7 @@ export async function runStreamPipeline(body: ChatRequest): Promise<Response> {
     // 10. Persist assistant message
     const afterMessages = getMessages(conversationId);
     insertMessage({
-      id: randomUUID(),
+      id: `msg_${randomUUID()}`,
       conversation_id: conversationId,
       role: "assistant",
       content: text,

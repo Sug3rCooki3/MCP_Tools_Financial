@@ -7,6 +7,8 @@ import {
   insertMessage,
   getMessages,
   deleteConversation,
+  listConversations,
+  updateConversationTitle,
 } from "@/lib/db/conversations";
 
 function createTestDb(): Database.Database {
@@ -83,5 +85,35 @@ describe("conversations DB", () => {
     deleteConversation("conv-3", db);
     expect(getConversation("conv-3", db)).toBeNull();
     expect(getMessages("conv-3", db)).toHaveLength(0);
+  });
+
+  it("lists conversations newest first", () => {
+    createConversation("conv-a", "Alpha", db);
+    createConversation("conv-b", "Beta", db);
+    // Insert a message in conv-a to bump its updated_at after conv-b was created
+    insertMessage(
+      { id: "msg-a", conversation_id: "conv-a", role: "user", content: "hi", tool_call_id: null, tool_name: null, position: 0 },
+      db
+    );
+    const list = listConversations(10, db);
+    expect(list[0].id).toBe("conv-a");
+    expect(list[1].id).toBe("conv-b");
+  });
+
+  it("updates conversation title", () => {
+    createConversation("conv-c", "Old title", db);
+    updateConversationTitle("conv-c", "New title", db);
+    const conv = getConversation("conv-c", db);
+    expect(conv!.title).toBe("New title");
+  });
+
+  it("message ids use msg_ prefix", () => {
+    createConversation("conv-d", "", db);
+    insertMessage(
+      { id: "msg_abc-123", conversation_id: "conv-d", role: "user", content: "hello", tool_call_id: null, tool_name: null, position: 0 },
+      db
+    );
+    const msgs = getMessages("conv-d", db);
+    expect(msgs[0].id).toMatch(/^msg_/);
   });
 });
