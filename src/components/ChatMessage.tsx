@@ -11,7 +11,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
 
   return (
     <div
-      data-testid={isUser ? "user-message" : "assistant-message"}
+      data-role={message.role}
+      data-testid={`message-${message.id}`}
       className={`flex ${isUser ? "justify-end" : "justify-start"}`}
     >
       <div

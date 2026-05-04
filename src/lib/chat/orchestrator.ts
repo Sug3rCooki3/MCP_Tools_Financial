@@ -72,5 +72,5 @@ export async function orchestrate(
     loopMessages.push(...toolResults);
   }
 
-  throw new Error("Exceeded tool-call safety limit without a final response");
+  throw new Error(`Exceeded tool-call safety limit (${MAX_TOOL_ROUNDS} rounds)`);
 }

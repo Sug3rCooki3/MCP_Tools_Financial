@@ -29,6 +29,6 @@ test("user message appears in message list after send", async ({ page }) => {
   await input.fill("Test question");
   await page.keyboard.press("Enter");
 
-  await expect(page.getByTestId("user-message")).toBeVisible();
-  await expect(page.getByTestId("assistant-message")).toBeVisible();
+  await expect(page.locator("[data-role='user']")).toBeVisible();
+  await expect(page.locator("[data-role='assistant']")).toBeVisible();
 });
