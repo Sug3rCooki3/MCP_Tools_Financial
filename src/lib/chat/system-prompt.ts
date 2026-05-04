@@ -1,60 +1,58 @@
-import {
-  MAX_CONTEXT_MESSAGES,
-  MAX_CONTEXT_CHARACTERS,
-  WARN_CONTEXT_MESSAGES,
-  WARN_CONTEXT_CHARACTERS,
-} from "./chat-config";
+// Section text per spec 06 — hardcoded, not derived from the tool registry
 
-interface SystemPromptOptions {
-  contextMessageCount: number;
-  contextCharCount: number;
-  toolNames: string[];
+const IDENTITY_SECTION = `You are a financial assistant powered by GPT-4o. You help users with:
+- Stock prices, company overviews, and ticker lookups
+- Currency exchange rates
+- Financial calculations (compound interest, simple interest, percent change)
+- Portfolio value summaries
+
+You are knowledgeable, precise, and concise. You cite the source of data when relevant (e.g. "According to Alpha Vantage...").`;
+
+const SCOPE_SECTION = `You only assist with financial topics. If a user asks about something unrelated to finance, politely redirect them.
+
+Important limitations:
+- You cannot execute trades or access any brokerage accounts
+- Market data may be delayed by up to 15-20 minutes on the free API tier
+- You do not have access to private financial data unless the user provides it in the conversation
+- Always remind users that nothing you say constitutes financial advice`;
+
+// Tool descriptions are hardcoded here — NOT pulled from the registry.
+// The registry descriptions are for OpenAI's function-calling schema.
+const TOOL_DESCRIPTIONS: Record<string, string> = {
+  get_stock_quote: "Use for current price, change, and volume of a stock",
+  get_company_overview: "Use for fundamental data (sector, market cap, P/E, EPS)",
+  search_ticker: "Use when the user gives a company name but not a ticker",
+  get_fx_rate: "Use for currency exchange rates",
+  compound_interest: "Use for compound interest calculations",
+  simple_interest: "Use for simple interest calculations",
+  percent_change: "Use to calculate the percentage difference between two values",
+  portfolio_summary: "Use when the user provides a list of holdings",
+};
+
+function buildToolSection(toolNames: string[]): string {
+  const lines = toolNames.map((name) => {
+    const desc = TOOL_DESCRIPTIONS[name] ?? name;
+    return `- ${name}: ${desc}`;
+  });
+  return `You have access to the following tools. Use them when the user asks for live data or calculations.\nDo not guess or make up financial figures — always use a tool for real data.\n\nAvailable tools:\n${lines.join("\n")}\n\nWhen you need data, call the appropriate tool first, then incorporate the result into your response.`;
 }
 
-export function buildSystemPrompt(opts: SystemPromptOptions): string {
-  const { contextMessageCount, contextCharCount, toolNames } = opts;
+const CONTEXT_WINDOW_WARN_SECTION = `Note: This conversation is getting long and older messages have been summarized or removed to stay within context limits. If you reference something from earlier that seems missing, ask the user to repeat it.`;
 
-  const contextWindowNearLimit =
-    contextMessageCount >= WARN_CONTEXT_MESSAGES ||
-    contextCharCount >= WARN_CONTEXT_CHARACTERS;
+export function buildSystemPrompt(opts: {
+  toolNames: string[];
+  contextWindowNearLimit: boolean;
+}): string {
+  const { toolNames, contextWindowNearLimit } = opts;
 
-  const sections: string[] = [];
+  const sections: string[] = [
+    IDENTITY_SECTION,
+    SCOPE_SECTION,
+    buildToolSection(toolNames),
+  ];
 
-  // Section 1: Role and identity
-  sections.push(`You are a helpful financial assistant. You help users with stock prices, \
-exchange rates, portfolio analysis, and financial calculations.
-
-Respond in clear, concise language. Always cite the data source (e.g., "According to \
-Alpha Vantage...") when providing market data.`);
-
-  // Section 2: Tool usage rules
-  sections.push(`## Tool Usage
-
-You have access to the following tools: ${toolNames.join(", ")}.
-
-- Use tools when users request data you cannot know from training alone (prices, rates, etc.)
-- Do not invoke the same tool with the same arguments more than once per response
-- If a tool returns an error, report the error to the user clearly
-- Present numerical data with appropriate precision (2 decimal places for prices/rates)`);
-
-  // Section 3: Tool descriptions
-  sections.push(`## Tool Descriptions
-
-- get_stock_price: Retrieves the current price and basic info for a given stock symbol
-- get_stock_overview: Retrieves fundamental data (market cap, P/E ratio, etc.) for a stock
-- get_fx_rate: Retrieves the current exchange rate between two currencies
-- percent_change: Calculates the percentage change between two values
-- compound_interest: Calculates compound interest growth over time
-- portfolio_summary: Summarizes a portfolio of holdings by calculating total value and allocation`);
-
-  // Section 4: Context window notice (conditional)
   if (contextWindowNearLimit) {
-    sections.push(
-      `## Note\n\nThis conversation is approaching the context limit \
-(${contextMessageCount}/${MAX_CONTEXT_MESSAGES} messages, \
-${contextCharCount}/${MAX_CONTEXT_CHARACTERS} chars). \
-Older messages may have been dropped. If context seems missing, ask the user to re-state it.`
-    );
+    sections.push(CONTEXT_WINDOW_WARN_SECTION);
   }
 
   return sections.join("\n\n");

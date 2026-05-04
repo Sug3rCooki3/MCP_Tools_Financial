@@ -6,10 +6,7 @@ import { buildSystemPrompt } from "./system-prompt";
 import { orchestrate } from "./orchestrator";
 import { toolRegistry } from "../tools/registry";
 import { buildStreamResponse, buildErrorStreamResponse } from "./stream-execution";
-import {
-  MAX_CONTEXT_MESSAGES,
-  MAX_CONTEXT_CHARACTERS,
-} from "./chat-config";
+import { WARN_CONTEXT_MESSAGES, WARN_CONTEXT_CHARACTERS } from "./chat-config";
 
 export async function runStreamPipeline(body: ChatRequest): Promise<Response> {
   try {
@@ -44,12 +41,14 @@ export async function runStreamPipeline(body: ChatRequest): Promise<Response> {
     );
 
     const totalChars = contextMessages.reduce((n, m) => n + m.content.length, 0);
+    const contextWindowNearLimit =
+      contextMessages.length >= WARN_CONTEXT_MESSAGES ||
+      totalChars >= WARN_CONTEXT_CHARACTERS;
 
     // 6. Build system prompt
     const systemPrompt = buildSystemPrompt({
-      contextMessageCount: contextMessages.length,
-      contextCharCount: totalChars,
-      toolNames: Array.from(toolRegistry.getSchemas()).map((t) => t.function.name),
+      contextWindowNearLimit,
+      toolNames: toolRegistry.getSchemas().map((t) => t.function.name),
     });
 
     // 8. Orchestrate

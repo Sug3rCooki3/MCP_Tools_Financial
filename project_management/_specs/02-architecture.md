@@ -148,13 +148,19 @@ The DB singleton is initialized once at startup:
 ```typescript
 // src/lib/db/index.ts
 import Database from "better-sqlite3";
+import { mkdirSync } from "fs";
+import { dirname } from "path";
 import { ensureSchema } from "./schema";
+import { getDbPath } from "../config/env";
 
 let db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
   if (!db) {
-    db = new Database(process.env.DB_PATH ?? "data/finance-chat.db");
+    const dbPath = getDbPath();
+    const dir = dirname(dbPath);
+    if (dir && dir !== ".") mkdirSync(dir, { recursive: true }); // creates data/ on first run
+    db = new Database(dbPath);
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     ensureSchema(db);
@@ -224,7 +230,11 @@ orchestrator()
     │       └── [text reply] → return text
     │
     ▼
-stream-execution.ts
-    ├── ReadableStream (SSE)    → Browser
-    └── persistAssistantMessage → SQLite
+stream-pipeline.ts
+    ├── persistAssistantMessage → SQLite
+    └── buildStreamResponse()
+            │
+            ▼
+        stream-execution.ts
+            └── ReadableStream (SSE)    → Browser
 ```
