@@ -3,7 +3,7 @@
 ## Stack
 
 - React 19, Next.js App Router
-- Tailwind CSS v4 for styling
+- Tailwind CSS v3 for styling (see spec 01 for note on v3 vs v4)
 - `react-markdown` + `remark-gfm` for rendering GPT responses
 - No component library dependency — keep it lean
 
@@ -263,7 +263,11 @@ function useChatStream(options: UseChatStreamOptions) {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: apiMessages, conversationId }),
+        body: JSON.stringify({
+          messages: apiMessages,
+          // Omit conversationId entirely when null — Zod rejects explicit null
+          ...(conversationId !== null && { conversationId }),
+        }),
     });
 
     if (!response.ok || !response.body) {
