@@ -5,6 +5,7 @@ const IDENTITY_SECTION = `You are a financial assistant powered by GPT-4o. You h
 - Currency exchange rates
 - Financial calculations (compound interest, simple interest, percent change)
 - Portfolio value summaries
+- Visual charts and graphs for financial data
 
 You are knowledgeable, precise, and concise. You cite the source of data when relevant (e.g. "According to Alpha Vantage...").`;
 
@@ -27,6 +28,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   simple_interest: "Use for simple interest calculations",
   percent_change: "Use to calculate the percentage difference between two values",
   portfolio_summary: "Use when the user provides a list of holdings",
+  generate_financial_graph: "Use to create a pie, bar, or line chart when the user wants to visualize financial data",
 };
 
 function buildToolSection(toolNames: string[]): string {
@@ -34,7 +36,12 @@ function buildToolSection(toolNames: string[]): string {
     const desc = TOOL_DESCRIPTIONS[name] ?? name;
     return `- ${name}: ${desc}`;
   });
-  return `You have access to the following tools. Use them when the user asks for live data or calculations.\nDo not guess or make up financial figures — always use a tool for real data.\n\nAvailable tools:\n${lines.join("\n")}\n\nWhen you need data, call the appropriate tool first, then incorporate the result into your response.`;
+  let section = `You have access to the following tools. Use them when the user asks for live data or calculations.\nDo not guess or make up financial figures — always use a tool for real data.\n\nAvailable tools:\n${lines.join("\n")}\n\nWhen you need data, call the appropriate tool first, then incorporate the result into your response.`;
+  if (toolNames.includes("generate_financial_graph")) {
+    section +=
+      "\n\nWhen generate_financial_graph returns a chartUrl, display the chart inline using markdown: ![Chart Title](chartUrl)";
+  }
+  return section;
 }
 
 const CONTEXT_WINDOW_WARN_SECTION = `Note: This conversation is getting long and older messages have been summarized or removed to stay within context limits. If you reference something from earlier that seems missing, ask the user to repeat it.`;

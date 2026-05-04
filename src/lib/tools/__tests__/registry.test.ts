@@ -43,7 +43,7 @@ describe("ToolRegistry", () => {
 });
 
 describe("singleton toolRegistry", () => {
-  it("has all 8 tools registered", () => {
+  it("has all 9 tools registered", () => {
     const names = toolRegistry.getSchemas().map((s) => s.function.name);
     expect(names).toContain("get_stock_quote");
     expect(names).toContain("get_company_overview");
@@ -53,6 +53,7 @@ describe("singleton toolRegistry", () => {
     expect(names).toContain("simple_interest");
     expect(names).toContain("percent_change");
     expect(names).toContain("portfolio_summary");
-    expect(names).toHaveLength(8);
+    expect(names).toContain("generate_financial_graph");
+    expect(names).toHaveLength(9);
   });
 });

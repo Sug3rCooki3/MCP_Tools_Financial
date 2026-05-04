@@ -7,6 +7,7 @@ const TOOL_LABELS: Record<string, string> = {
   simple_interest: "Calculated simple interest",
   percent_change: "Calculated percent change",
   portfolio_summary: "Summarized portfolio",
+  generate_financial_graph: "Generated financial chart",
 };
 
 interface ToolCallCardProps {

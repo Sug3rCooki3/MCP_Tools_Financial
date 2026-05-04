@@ -58,6 +58,8 @@
 
 > **Note on Tailwind:** The spec originally called for Tailwind v4 with `@tailwindcss/postcss`. Tailwind v3 is used instead (the current stable release). v3 requires `tailwind.config.ts` + `postcss.config.js` with `autoprefixer`, and `globals.css` uses the standard `@tailwind base/components/utilities` directives instead of `@import "tailwindcss"`.
 
+> **Note on `generate_financial_graph` (spec 09):** The graph tool uses [QuickChart.io](https://quickchart.io) via URL construction only — no npm package is required. The tool builds a Chart.js config object, encodes it into a URL, and returns it. No new production or dev dependencies are added.
+
 ## Folder Structure
 
 ```

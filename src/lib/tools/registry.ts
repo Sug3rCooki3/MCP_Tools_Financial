@@ -39,8 +39,10 @@ export class ToolRegistry {
 import { registerMarketDataTools } from "./market-data";
 import { registerFxTools } from "./fx";
 import { registerCalculatorTools } from "./calculator";
+import { registerGraphTools } from "./graph";
 
 export const toolRegistry = new ToolRegistry();
 registerMarketDataTools(toolRegistry);
 registerFxTools(toolRegistry);
 registerCalculatorTools(toolRegistry);
+registerGraphTools(toolRegistry);

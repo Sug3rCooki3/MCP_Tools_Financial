@@ -329,6 +329,62 @@ Pure functions — no external API calls. These never fail due to network issues
 
 ---
 
+### Graph Tools (`src/lib/tools/graph.ts`)
+
+Pure URL construction — no external API calls. Builds a [QuickChart.io](https://quickchart.io) URL from a Chart.js config and returns it. No new npm dependencies required.
+
+#### `generate_financial_graph`
+
+```typescript
+{
+  name: "generate_financial_graph",
+  description: "Creates a visual chart (pie, bar, or line) from financial data points. Returns a chart image URL to display to the user.",
+  parameters: {
+    type: "object",
+    properties: {
+      title:       { type: "string", description: "The title of the graph" },
+      type:        { type: "string", enum: ["pie", "bar", "line"], description: "The visual format" },
+      data_points: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            label: { type: "string" },
+            value: { type: "number" }
+          },
+          required: ["label", "value"]
+        }
+      },
+      unit: { type: "string", description: "Currency or unit symbol. Defaults to '$'" }
+    },
+    required: ["title", "type", "data_points"]
+  },
+  execute: async (rawInput) => {
+    // Validates with Zod, builds Chart.js config, encodes into QuickChart URL
+    // Returns: { chartUrl, title, chartType, dataPoints: [{ label, formattedValue }] }
+  }
+}
+```
+
+**Return shape:**
+```json
+{
+  "chartUrl": "https://quickchart.io/chart?c=...&width=600&height=400",
+  "title": "Monthly Budget Breakdown",
+  "chartType": "pie",
+  "dataPoints": [
+    { "label": "Groceries", "formattedValue": "$1,000" },
+    { "label": "Mortgage",  "formattedValue": "$30,000" }
+  ]
+}
+```
+
+**Note on remaining income:** The tool does not accept an `income` parameter. When a user provides income + expenses, the LLM calculates `remaining = income - sum(expenses)` and adds it as a `{ label: "Remaining/Savings", value: remaining }` data point before calling the tool.
+
+**Rendering:** The system prompt instructs the LLM to embed `chartUrl` as a markdown image (`![title](chartUrl)`), which `MarkdownProse` renders inline — no new UI code needed.
+
+---
+
 ## Tool Input Validation
 
 The `execute` signatures in the tool definitions above show the *intended shape* for readability. In the actual implementation, always accept `rawInput: Record<string, unknown>` and validate with Zod before destructuring:
