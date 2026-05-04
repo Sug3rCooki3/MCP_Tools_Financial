@@ -1,0 +1,11 @@
+{
+  "appName": "Financial Assistant",
+  "firstMessage": "Hello! I can help you with stock prices, exchange rates, interest calculations, and portfolio analysis. What would you like to know?",
+  "inputPlaceholder": "Ask a financial question...",
+  "suggestions": [
+    "What is the current price of AAPL?",
+    "What is 1 USD in EUR today?",
+    "Calculate compound interest on $5,000 at 6% for 20 years",
+    "What is the market cap of Microsoft?"
+  ]
+}

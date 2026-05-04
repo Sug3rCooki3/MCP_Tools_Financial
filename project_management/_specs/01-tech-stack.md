@@ -6,7 +6,7 @@
 |---|---|---|
 | Framework | Next.js 15 (App Router) | Server components, Route Handlers, streaming support |
 | Language | TypeScript 5 | Type safety across the whole stack |
-| Runtime | Node.js 20+ | Required by Next.js |
+| Runtime | Node.js 20+ (tested on 24) | Required by Next.js |
 
 ## Dependencies
 
@@ -17,12 +17,12 @@
   "next": "^15",
   "react": "^19",
   "react-dom": "^19",
-  "openai": "^6",
-  "better-sqlite3": "^12",
-  "zod": "^4",
-  "react-markdown": "^10",
+  "openai": "^4",
+  "better-sqlite3": "^11",
+  "zod": "^3",
+  "react-markdown": "^9",
   "remark-gfm": "^4",
-  "pino": "^10"
+  "pino": "^9"
 }
 ```
 
@@ -37,14 +37,15 @@
 ```json
 {
   "typescript": "^5",
-  "vitest": "^4",
-  "@vitest/coverage-v8": "^4",
+  "vitest": "^2",
+  "@vitest/coverage-v8": "^2",
   "@testing-library/react": "^16",
   "@testing-library/jest-dom": "^6",
   "@playwright/test": "^1",
-  "jsdom": "^28",
-  "tailwindcss": "^4",
-  "@tailwindcss/postcss": "^4",
+  "jsdom": "^25",
+  "tailwindcss": "^3",
+  "postcss": "^8",
+  "autoprefixer": "^10",
   "eslint": "^9",
   "eslint-config-next": "^15",
   "tsx": "^4",
@@ -54,6 +55,8 @@
   "@types/react-dom": "^19"
 }
 ```
+
+> **Note on Tailwind:** The spec originally called for Tailwind v4 with `@tailwindcss/postcss`. Tailwind v3 is used instead (the current stable release). v3 requires `tailwind.config.ts` + `postcss.config.js` with `autoprefixer`, and `globals.css` uses the standard `@tailwind base/components/utilities` directives instead of `@import "tailwindcss"`.
 
 ## Folder Structure
 
@@ -117,8 +120,10 @@
 │       └── error-states.spec.ts        # Mock API failures, assert error UI
 ├── playwright.config.ts
 ├── vitest.config.ts
-├── next.config.ts
-├── tsconfig.json
+├── next.config.ts         # serverExternalPackages: ["better-sqlite3", "pino"]
+├── tailwind.config.ts     # required for Tailwind v3
+├── postcss.config.js      # plugins: { tailwindcss, autoprefixer }
+├── tsconfig.json          # excludes "docs" to avoid picking up reference project
 └── .env.example
 ```
 
@@ -152,3 +157,14 @@ DB_PATH=data/finance-chat.db
 - `strict: true`
 - Path alias: `@/*` → `./src/*`
 - Target: `ES2022`
+- `exclude: ["node_modules", "docs"]` — the `docs/_reference` project must be excluded to prevent type-check conflicts
+
+## Vitest Config
+
+- `environment: "node"` (default); component tests opt in with `// @vitest-environment jsdom` docblock
+- `include: ["src/**/*.test.ts", "src/**/*.test.tsx"]` — scoped to `src/` to avoid picking up reference project tests
+- `exclude: ["docs/**", "node_modules/**"]`
+
+## Key next.config.ts Setting
+
+`serverExternalPackages: ["better-sqlite3", "pino"]` — required so Next.js does not attempt to bundle native modules. Without this, the SQLite build fails at runtime.

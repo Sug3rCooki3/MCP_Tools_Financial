@@ -1,1 +1,32 @@
 docs/_*
+
+# Dependencies
+/node_modules
+
+# Next.js
+/.next/
+/out/
+
+# Build output
+/build
+
+# SQLite data
+/data
+
+# Local env files
+.env.local
+.env.*.local
+
+# Misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+/coverage
+/playwright-report
+/test-results
