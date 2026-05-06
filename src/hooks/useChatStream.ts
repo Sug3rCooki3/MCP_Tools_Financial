@@ -4,6 +4,7 @@ interface UseChatStreamOptions {
   onDelta: (chunk: string) => void;
   onDone: (conversationId: string) => void;
   onError: (message: string) => void;
+  onQuotaExceeded?: (limit: number) => void;
 }
 
 export function useChatStream(options: UseChatStreamOptions) {
@@ -29,7 +30,20 @@ export function useChatStream(options: UseChatStreamOptions) {
       return;
     }
 
-    if (!response.ok || !response.body) {
+    if (!response.ok) {
+      if (response.status === 401) {
+        try {
+          const body = await response.json() as { error?: string; limit?: number };
+          if (body.error === "quota_exceeded" && options.onQuotaExceeded) {
+            options.onQuotaExceeded(body.limit ?? 5);
+            return;
+          }
+        } catch { /* fall through to generic error */ }
+      }
+      options.onError("Request failed. Please try again.");
+      return;
+    }
+    if (!response.body) {
       options.onError("Request failed. Please try again.");
       return;
     }

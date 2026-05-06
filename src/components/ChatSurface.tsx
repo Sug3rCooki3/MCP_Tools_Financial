@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import ErrorBoundary from "./ErrorBoundary";
+import { AnonQuotaBanner } from "./AnonQuotaBanner";
+import { LoginModal } from "./LoginModal";
 import { useChatStream } from "@/hooks/useChatStream";
 
 function newId() {
@@ -40,6 +42,11 @@ export default function ChatSurface({ initialPrompts }: ChatSurfaceProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [messagesUsed, setMessagesUsed] = useState(0);
+  const [anonLimit, setAnonLimit] = useState<number>(5);
+  const pendingTextRef = useRef<string>("");
 
   const { send } = useChatStream({
     onDelta: (chunk) => {
@@ -55,6 +62,7 @@ export default function ChatSurface({ initialPrompts }: ChatSurfaceProps) {
     onDone: (convId) => {
       setIsStreaming(false);
       setConversationId(convId);
+      setMessagesUsed((n) => n + 1);
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (!last) return prev;
@@ -73,11 +81,24 @@ export default function ChatSurface({ initialPrompts }: ChatSurfaceProps) {
         return prev;
       });
     },
+    onQuotaExceeded: (limit) => {
+      setAnonLimit(limit);
+      setPendingMessage(pendingTextRef.current);
+      setShowLoginModal(true);
+      setIsStreaming(false);
+      // Remove the optimistic assistant placeholder
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.isStreaming) return prev.slice(0, -1);
+        return prev;
+      });
+    },
   });
 
   const handleSend = async (text: string) => {
     if (!text.trim() || isStreaming) return;
 
+    pendingTextRef.current = text.trim();
     setError(null);
     const userMsg: DisplayMessage = {
       id: newId(),
@@ -103,6 +124,20 @@ export default function ChatSurface({ initialPrompts }: ChatSurfaceProps) {
     setConversationId(null);
     setError(null);
     setIsStreaming(false);
+  };
+
+  const handleLoginSuccess = async () => {
+    setShowLoginModal(false);
+    try {
+      await fetch("/api/migrate-session", { method: "POST" });
+    } catch (err) {
+      console.error("migrate-session failed:", err);
+    }
+    if (pendingMessage !== null) {
+      const text = pendingMessage;
+      setPendingMessage(null);
+      await handleSend(text);
+    }
   };
 
   const isEmpty = messages.length === 0;
@@ -146,8 +181,21 @@ export default function ChatSurface({ initialPrompts }: ChatSurfaceProps) {
             disabled={isStreaming}
             placeholder={initialPrompts.inputPlaceholder}
           />
+          <AnonQuotaBanner
+            messagesUsed={messagesUsed}
+            limit={anonLimit}
+            onSignUpClick={() => setShowLoginModal(true)}
+          />
         </div>
       </div>
+      <LoginModal
+        open={showLoginModal}
+        onSuccess={handleLoginSuccess}
+        onClose={() => {
+          setShowLoginModal(false);
+          setPendingMessage(null);
+        }}
+      />
     </ErrorBoundary>
   );
 }

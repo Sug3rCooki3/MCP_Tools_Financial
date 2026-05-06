@@ -4,6 +4,8 @@ import { getDb } from "./index";
 export interface Conversation {
   id: string;
   title: string;
+  guest_session_id: string | null;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -22,9 +24,12 @@ export interface Message {
 export function createConversation(
   id: string,
   title: string,
+  guestSessionId?: string,
   db: Database.Database = getDb()
 ): Conversation {
-  db.prepare("INSERT INTO conversations (id, title) VALUES (?, ?)").run(id, title);
+  db.prepare(
+    "INSERT INTO conversations (id, title, guest_session_id) VALUES (?, ?, ?)"
+  ).run(id, title, guestSessionId ?? null);
   return getConversation(id, db)!;
 }
 

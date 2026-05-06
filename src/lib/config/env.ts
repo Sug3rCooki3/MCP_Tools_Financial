@@ -27,3 +27,13 @@ export function getAlphaVantageApiKey(): string {
 export function getDbPath(): string {
   return process.env.DB_PATH ?? "data/finance-chat.db";
 }
+
+export function getAuthSecret(): string {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET is not set. Generate with: openssl rand -base64 32");
+  return secret;
+}
+
+export function getAnonMessageLimit(): number {
+  return Number(process.env.ANON_MESSAGE_LIMIT ?? "5");
+}

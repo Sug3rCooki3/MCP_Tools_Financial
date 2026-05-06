@@ -22,7 +22,9 @@
   "zod": "^3",
   "react-markdown": "^9",
   "remark-gfm": "^4",
-  "pino": "^9"
+  "pino": "^9",
+  "next-auth": "^5",
+  "bcryptjs": "^2"
 }
 ```
 
@@ -31,6 +33,8 @@
 - **`zod`** — Request body validation and tool input schemas
 - **`react-markdown` + `remark-gfm`** — Render GPT markdown replies including tables (important for financial data)
 - **`pino`** — Structured JSON logging
+- **`next-auth@5`** (Auth.js v5) — Authentication with Credentials provider; JWT sessions stored in signed `httpOnly` cookies; native Next.js 15 App Router support
+- **`bcryptjs`** — Pure-JS bcrypt for password hashing (cost factor 12); no native bindings required
 
 ### Dev
 
@@ -52,7 +56,8 @@
   "@types/better-sqlite3": "^7",
   "@types/node": "^20",
   "@types/react": "^19",
-  "@types/react-dom": "^19"
+  "@types/react-dom": "^19",
+  "@types/bcryptjs": "^2"
 }
 ```
 

@@ -10,19 +10,24 @@ Browser
 Next.js Route Handler  (src/app/api/chat/route.ts)
   │
   ├─ 1. Origin check (CSRF guard)
-  ├─ 2. Parse + validate request body (Zod)
-  ├─ 3. Load or create conversation (SQLite)
-  ├─ 4. Persist user message to DB
-  ├─ 5. Build context window (trim old messages)
-  ├─ 6. Build system prompt
-  ├─ 7. Resolve tool schemas from ToolRegistry
-  ├─ 8. Enter orchestrator loop (GPT tool-call rounds)
+  ├─ 2. Auth / anonymous quota check (spec 10)
+  │     ├─ Authenticated (Auth.js session present): skip quota, proceed
+  │     └─ Anonymous: read/create guest_session_id httpOnly cookie;
+  │        enforce ANON_MESSAGE_LIMIT per 24h window via SQLite;
+  │        return 401 { error: "quota_exceeded" } if limit reached
+  ├─ 3. Parse + validate request body (Zod)
+  ├─ 4. Load or create conversation (SQLite)
+  ├─ 5. Persist user message to DB
+  ├─ 6. Build context window (trim old messages)
+  ├─ 7. Build system prompt
+  ├─ 8. Resolve tool schemas from ToolRegistry
+  ├─ 9. Enter orchestrator loop (GPT tool-call rounds)
   │     └─ Each round:
   │         a. Call OpenAI Chat Completions (non-streaming — full response per round)
   │         b. If tool_calls present → execute tools → feed results back
   │         c. If no tool_calls → final text response
-  ├─ 9. Stream final response to browser (SSE / ReadableStream)
-  └─10. Persist assistant message to DB
+  ├─10. Stream final response to browser (SSE / ReadableStream)
+  └─11. Persist assistant message to DB
 ```
 
 ---
@@ -141,7 +146,7 @@ All four are env vars accessed via typed accessors in `src/lib/config/env.ts` (s
 
 ## Database (`src/lib/db/`)
 
-SQLite via `better-sqlite3`. A single file at `data/finance-chat.db` (path configurable via `DB_PATH` env var). See **[03-data-models.md](03-data-models.md)** for the full schema (`conversations`, `messages`, `schema_version` tables).
+SQLite via `better-sqlite3`. A single file at `data/finance-chat.db` (path configurable via `DB_PATH` env var). See **[03-data-models.md](03-data-models.md)** for the full schema (`conversations`, `messages`, `users`, `anonymous_quotas`, `schema_version` tables).
 
 The DB singleton is initialized once at startup:
 
@@ -200,6 +205,17 @@ export function getOpenAiModel(): string {
 ```
 
 This prevents silent failures from undefined env vars at runtime.
+
+---
+
+## API Routes
+
+| Method | Route | Handler | Auth required |
+|---|---|---|---|
+| POST | `/api/chat` | `src/app/api/chat/route.ts` | No (quota-gated for anonymous) |
+| GET/POST | `/api/auth/[...nextauth]` | `src/app/api/auth/[...nextauth]/route.ts` | — (Auth.js internal) |
+| POST | `/api/auth/register` | `src/app/api/auth/register/route.ts` | No |
+| POST | `/api/migrate-session` | `src/app/api/migrate-session/route.ts` | **Yes** (JWT session) |
 
 ---
 

@@ -14,12 +14,16 @@ Stores one row per chat session.
 
 ```sql
 CREATE TABLE IF NOT EXISTS conversations (
-  id          TEXT PRIMARY KEY,          -- e.g. "conv_01J..." (ulid or crypto.randomUUID())
-  title       TEXT NOT NULL DEFAULT '',  -- auto-generated from first user message (first 60 chars)
-  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  id               TEXT PRIMARY KEY,          -- e.g. "conv_<uuid>"
+  title            TEXT NOT NULL DEFAULT '',  -- auto-generated from first user message
+  user_id          TEXT REFERENCES users(id), -- NULL for anonymous; set after migration
+  guest_session_id TEXT,                      -- anonymous cookie value; cleared after migration
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
+
+> `user_id` and `guest_session_id` are added in the **v2 migration** (spec 10). The base v1 schema does not include them.
 
 ---
 
@@ -58,6 +62,35 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 ---
 
+### Table: `users` _(added in v2 migration — spec 10)_
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,  -- e.g. "user_<uuid>"
+  email         TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,     -- bcrypt hash (cost 12)
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+---
+
+### Table: `anonymous_quotas` _(added in v2 migration — spec 10)_
+
+Tracks message count per anonymous session within a 24-hour rolling window.
+
+```sql
+CREATE TABLE IF NOT EXISTS anonymous_quotas (
+  session_id    TEXT PRIMARY KEY,
+  message_count INTEGER NOT NULL DEFAULT 0,
+  window_start  TEXT NOT NULL DEFAULT (datetime('now'))  -- reset when > 24h old
+);
+```
+
+The window resets lazily on read — no cron job required.
+
+---
+
 ## TypeScript Types
 
 File: `src/lib/db/conversations.ts`
@@ -66,8 +99,17 @@ File: `src/lib/db/conversations.ts`
 export interface Conversation {
   id: string;
   title: string;
+  user_id: string | null;          // null = anonymous; set after session migration
+  guest_session_id: string | null; // anonymous cookie value; null after migration
   created_at: string;
   updated_at: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  password_hash: string;
+  created_at: string;
 }
 
 export interface Message {
@@ -87,8 +129,10 @@ export interface Message {
 ## DB Operations (`src/lib/db/conversations.ts`)
 
 ```typescript
-// Create a new conversation
-function createConversation(id: string, title: string): Conversation
+// Create a new conversation.
+// guestSessionId: pass the anonymous cookie value for anonymous users; omit for authenticated.
+// Required so migrate-session can find and transfer conversations via WHERE guest_session_id = ?
+function createConversation(id: string, title: string, guestSessionId?: string): Conversation
 
 // Get conversation by ID (returns null if not found)
 function getConversation(id: string): Conversation | null
@@ -154,3 +198,20 @@ Add `data/` to `.gitignore`. The `data/` directory must exist before the app sta
 import { mkdirSync } from "fs";
 mkdirSync("data", { recursive: true });
 ```
+
+---
+
+## DB Operations — Users (`src/lib/db/users.ts`) _(spec 10)_
+
+```typescript
+// Create a new user (id = "user_<uuid>", passwordHash = bcrypt output)
+function createUser(id: string, email: string, passwordHash: string): User
+
+// Look up a user by email — used by Auth.js Credentials provider
+function getUserByEmail(email: string, db?: Database.Database): User | null
+
+// Look up a user by ID — used to verify session ownership
+function getUserById(id: string, db?: Database.Database): User | null
+```
+
+All three accept an optional `db` parameter (defaulting to `getDb()`) for testability with in-memory SQLite, following the same pattern as `src/lib/db/conversations.ts`.

@@ -246,6 +246,52 @@ Components must use `data-role` and `data-testid` attributes so Playwright selec
 
 ---
 
+---
+
+### Anonymous Quota (`src/lib/auth/quota.test.ts`) _(spec 10)_
+
+Uses an in-memory SQLite database. All calls pass the `db` parameter.
+
+```typescript
+describe("checkAndIncrementQuota", () => {
+  it("allows the first message and creates a quota row");
+  it("allows messages up to the limit");
+  it("blocks the message at exactly the limit");
+  it("resets the count after the 24h window has expired");
+  it("does not reset the count before 24h has elapsed");
+});
+```
+
+---
+
+### User DB Operations (`src/lib/db/users.test.ts`) _(spec 10)_
+
+```typescript
+describe("users", () => {
+  it("creates a user and retrieves them by email");
+  it("returns null for an unknown email");
+  it("returns null for an unknown ID");
+  it("throws on duplicate email (UNIQUE constraint)");
+});
+```
+
+---
+
+### Session Migration (`src/app/api/migrate-session/route.test.ts`) _(spec 10)_
+
+```typescript
+describe("POST /api/migrate-session", () => {
+  it("returns 401 when no auth session is present");
+  it("returns { migrated: 0 } when no guest_session_id cookie is present");
+  it("transfers conversations from guest_session_id to user_id");
+  it("clears guest_session_id on transferred conversations");
+  it("deletes the anonymous_quotas row after migration");
+  it("sets Set-Cookie Max-Age=0 on the response to clear the guest cookie");
+});
+```
+
+---
+
 ## Playwright E2E Tests
 
 ### Setup (`playwright.config.ts`)

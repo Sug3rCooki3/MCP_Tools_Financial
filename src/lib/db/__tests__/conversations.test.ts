@@ -30,14 +30,14 @@ describe("conversations DB", () => {
   });
 
   it("creates and retrieves a conversation", () => {
-    createConversation("conv-1", "Test chat", db);
+    createConversation("conv-1", "Test chat", undefined, db);
     const conv = getConversation("conv-1", db);
     expect(conv).not.toBeNull();
     expect(conv!.title).toBe("Test chat");
   });
 
   it("inserts and retrieves messages in order", () => {
-    createConversation("conv-2", "", db);
+    createConversation("conv-2", "", undefined, db);
     insertMessage(
       {
         id: "msg-1",
@@ -69,7 +69,7 @@ describe("conversations DB", () => {
   });
 
   it("deletes conversation and cascades to messages", () => {
-    createConversation("conv-3", "", db);
+    createConversation("conv-3", "", undefined, db);
     insertMessage(
       {
         id: "msg-3",
@@ -88,8 +88,8 @@ describe("conversations DB", () => {
   });
 
   it("lists conversations newest first", () => {
-    createConversation("conv-a", "Alpha", db);
-    createConversation("conv-b", "Beta", db);
+    createConversation("conv-a", "Alpha", undefined, db);
+    createConversation("conv-b", "Beta", undefined, db);
     // Insert a message in conv-a to bump its updated_at after conv-b was created
     insertMessage(
       { id: "msg-a", conversation_id: "conv-a", role: "user", content: "hi", tool_call_id: null, tool_name: null, position: 0 },
@@ -101,14 +101,14 @@ describe("conversations DB", () => {
   });
 
   it("updates conversation title", () => {
-    createConversation("conv-c", "Old title", db);
+    createConversation("conv-c", "Old title", undefined, db);
     updateConversationTitle("conv-c", "New title", db);
     const conv = getConversation("conv-c", db);
     expect(conv!.title).toBe("New title");
   });
 
   it("message ids use msg_ prefix", () => {
-    createConversation("conv-d", "", db);
+    createConversation("conv-d", "", undefined, db);
     insertMessage(
       { id: "msg_abc-123", conversation_id: "conv-d", role: "user", content: "hello", tool_call_id: null, tool_name: null, position: 0 },
       db

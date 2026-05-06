@@ -20,10 +20,12 @@ app/page.tsx
     │   │   └── plain text
     │   └── <ChatMessage role="assistant" />
     │       ├── <MarkdownProse />   ← renders GPT markdown
-    │       └── <ToolCallCard />    ← shown only when toolCalls are present; build it in v1
+    │       └── <ToolCallCard />    ← shown only when toolCalls are present
     ├── <ChatInput />
     │   ├── <textarea>
     │   └── <ComposerSendControl />
+    ├── <AnonQuotaBanner />  ← shown only when user is anonymous; hidden after login
+    ├── <LoginModal />       ← rendered (but hidden) at all times; shown on quota_exceeded
     └── <ErrorBoundary />
 ```
 
@@ -241,6 +243,45 @@ Simple top bar with the app name and a "New Chat" button.
 ### `<ErrorBoundary />` — `src/components/ErrorBoundary.tsx`
 
 React class component wrapping the whole chat surface. Catches render errors and shows a fallback UI with a reload prompt.
+
+---
+
+### `<AnonQuotaBanner />` — `src/components/AnonQuotaBanner.tsx` _(spec 10)_
+
+Shown below the chat input for anonymous users only.
+
+```typescript
+interface AnonQuotaBannerProps {
+  messagesUsed: number;   // count of messages sent this session
+  limit: number;          // ANON_MESSAGE_LIMIT value (from 401 response)
+  onSignUpClick: () => void;
+}
+```
+
+- Shows: `"{messagesUsed} of {limit} free messages used. Sign up to continue."`
+- When `messagesUsed >= limit`: warning style, text becomes `"Sign up to unlock unlimited messages"`
+- Hides when user is authenticated
+- `data-testid="anon-quota-banner"`
+
+---
+
+### `<LoginModal />` — `src/components/LoginModal.tsx` _(spec 10)_
+
+Modal overlay. Shown automatically when quota is exceeded or when user clicks "Sign up."
+
+```typescript
+interface LoginModalProps {
+  open: boolean;          // controls visibility
+  onSuccess: () => void;  // called after login + session migration
+  onClose: () => void;
+}
+```
+
+- Two tabs: **Log in** / **Sign up**
+- **Sign up:** `POST /api/auth/register` then auto-login via `signIn("credentials", ...)`
+- **Log in:** `signIn("credentials", { email, password, redirect: false })`
+- Inline error on failure: `"Invalid email or password."` (generic — no account enumeration)
+- `data-testid="login-modal"`
 
 ---
 

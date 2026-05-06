@@ -8,13 +8,16 @@ import { toolRegistry } from "../tools/registry";
 import { buildStreamResponse, buildErrorStreamResponse } from "./stream-execution";
 import { WARN_CONTEXT_MESSAGES, WARN_CONTEXT_CHARACTERS } from "./chat-config";
 
-export async function runStreamPipeline(body: ChatRequest): Promise<Response> {
+export async function runStreamPipeline(
+  body: ChatRequest,
+  options?: { guestSessionId?: string }
+): Promise<Response> {
   try {
     // 3. Load or create conversation
     const conversationId = body.conversationId ?? `conv_${randomUUID()}`;
     const existing = getConversation(conversationId);
     if (!existing) {
-      createConversation(conversationId, "");
+      createConversation(conversationId, "", options?.guestSessionId);
     }
 
     // 4. Persist user message

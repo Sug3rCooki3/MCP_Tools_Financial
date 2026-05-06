@@ -2,12 +2,17 @@
 
 ## Threat Model
 
-This is a self-hosted, single-user application. The primary threats are:
-- Cross-site request forgery (malicious page making POST requests to /api/chat)
+This is a self-hosted, **multi-user** application (anonymous + authenticated users). The primary threats are:
+- Cross-site request forgery (malicious page making POST requests to `/api/chat`)
 - Prompt injection via user input
 - API key exposure
 - Unvalidated input passed to external APIs or the GPT model
 - Excessive spend from unbounded tool call loops or context window abuse
+- Anonymous quota bypass (clearing cookies to reset message count)
+- Account enumeration via registration/login error messages
+- Credential stuffing attacks against `/api/auth/register` and login
+- Session fixation or hijacking during guest-to-user migration
+- XSS reading `guest_session_id` from storage
 
 ---
 
@@ -202,6 +207,44 @@ When self-hosting, always terminate TLS at a reverse proxy (nginx, Caddy) in fro
 
 ---
 
+## 10. Authentication Security (spec 10)
+
+### Password Hashing
+
+Passwords are hashed with `bcryptjs` at cost factor 12 before being stored in the `users` table. The plaintext password is never logged, stored, or returned in any response.
+
+```typescript
+const passwordHash = await bcrypt.hash(password, 12);
+```
+
+### Account Enumeration Prevention
+
+Both registration (email already taken) and login (wrong password or unknown email) must return the **same generic error message** to prevent an attacker from determining whether an email address has an account:
+
+- Registration conflict: `{ error: "Registration failed" }` — HTTP 409
+- Login failure: Auth.js returns `null` from `authorize()` — results in a generic "Invalid credentials" error
+
+Do not return `"Email already registered"` or `"User not found"` anywhere.
+
+### Anonymous Session ID
+
+The `guest_session_id` cookie is:
+- Generated with `crypto.randomUUID()` (128 bits of entropy)
+- Set with `httpOnly: true`, `SameSite: Strict`, `Secure: true` (production)
+- Never readable by JavaScript — immune to XSS
+- Validated as a UUID in `POST /api/migrate-session` via Zod (`.string().uuid()`)
+
+### JWT Secret
+
+`AUTH_SECRET` must be at minimum 32 characters (256 bits). Treat it like an API key:
+- Never commit it to git
+- Generate with: `openssl rand -base64 32`
+- Add a guard to `src/lib/config/env.ts` that throws at startup if missing (same pattern as `OPENAI_API_KEY`)
+
+When self-hosting, always terminate TLS at a reverse proxy (nginx, Caddy) in front of the Next.js server. Do not run the Node.js server directly on port 80/443 with HTTP.
+
+---
+
 ## Security Checklist for the Coder
 
 Before shipping:
@@ -213,3 +256,9 @@ Before shipping:
 - [ ] No secrets appear in `NEXT_PUBLIC_*` environment variables (those are bundled into client-side JS)
 - [ ] API keys never appear in log output
 - [ ] Tool inputs are Zod-validated before external API calls
+- [ ] `AUTH_SECRET` is set (min 32 chars) and not committed to git
+- [ ] Passwords stored as bcrypt hashes (cost 12) — never plaintext
+- [ ] `guest_session_id` cookie is `httpOnly`, `SameSite=Strict` — not readable by JS
+- [ ] Registration and login return the same generic error message (no account enumeration)
+- [ ] `POST /api/migrate-session` requires a valid Auth.js session before executing
+- [ ] `ANON_MESSAGE_LIMIT` is enforced server-side (not client-side)
